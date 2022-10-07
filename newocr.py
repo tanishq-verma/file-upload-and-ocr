@@ -3,10 +3,12 @@ from pprint import pprint
 from flask import Flask, flash, request, redirect, url_for
 from werkzeug.utils import secure_filename
 import PyPDF2
+import pyclamd
+from py_clamav import ClamAvScanner
 
 
 UPLOAD_FOLDER = '/Users/tanishq/flask/uploads'
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'pdf'}
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -25,7 +27,7 @@ def upload_file():
         file = request.files['file']
         # If the user does not select a file, the browser submits an
         # empty file without a filename.
-        if file.filename == '':
+        if file == '':
             flash('No selected file')
             return "no file added"
         if file and allowed_file(file.filename):
@@ -38,24 +40,38 @@ def upload_file():
             newfinal = newfinal.replace("(","")
             newfinal = newfinal.replace(")","")
 
-            file = open(str(newfinal),'rb')
-            content = []
-            pdf_reader = PyPDF2.PdfFileReader(file)
-            totalpages = pdf_reader.numPages
-            for x in range(0,totalpages):
-                page = pdf_reader.getPage(x)
-                print(page.extractText(x))
-                content.append(page.extractText(x))
-                print("--------------------NEXT PAGE---------------------------")
-                a = ''.join(content)
+            with ClamAvScanner() as scanner:
+            
+                alpha = scanner.scan_file(newfinal)
+
+                if alpha[0] == False:
+
+           
+
+                    file = open(str(newfinal),'rb')
+                    content = []
+                    pdf_reader = PyPDF2.PdfFileReader(file)
+                    totalpages = pdf_reader.numPages
+                    for x in range(0,totalpages):
+                        page = pdf_reader.getPage(x)
+                        content.append(page.extractText(x))
+                        content.append("                NEXT PAGE                   ")
+                        a = ''.join(content)
+
+                    return "No Virus | file uploaded successfully ||| OCR CONTENT --> " + a 
+
+
+
+
+                else:
+                    return "Virus in the file"
 
 
 
 
 
 
-
-            return "file uploaded successfully ||| OCR CONTENT --> " + a 
+            
     return '''
     <!doctype html>
     <title>Upload new File</title>
